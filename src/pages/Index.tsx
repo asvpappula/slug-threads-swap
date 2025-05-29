@@ -6,9 +6,10 @@ import Layout from '@/components/Layout';
 import HomePage from '@/components/HomePage';
 import SellPage from '@/components/SellPage';
 import ChatPage from '@/components/ChatPage';
+import UserDashboard from '@/components/UserDashboard';
 
 const Index = () => {
-  const [currentTab, setCurrentTab] = useState<'home' | 'sell' | 'chat'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'sell' | 'chat' | 'dashboard'>('home');
   const [activeChatItem, setActiveChatItem] = useState<ClothingItem | undefined>();
 
   const handleStartChat = (item: ClothingItem) => {
@@ -18,6 +19,10 @@ const Index = () => {
 
   const handleBackToChats = () => {
     setActiveChatItem(undefined);
+  };
+
+  const handleNavigateToSell = () => {
+    setCurrentTab('sell');
   };
 
   const renderCurrentPage = () => {
@@ -31,6 +36,13 @@ const Index = () => {
           <ChatPage 
             activeChat={activeChatItem} 
             onBackToChats={handleBackToChats}
+          />
+        );
+      case 'dashboard':
+        return (
+          <UserDashboard 
+            onNavigateToSell={handleNavigateToSell}
+            onStartChat={handleStartChat}
           />
         );
       default:
