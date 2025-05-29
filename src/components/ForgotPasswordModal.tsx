@@ -24,24 +24,15 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
     setIsLoading(true);
     setError('');
 
-    if (!email.includes('@ucsc.edu')) {
-      setError('Please use your UCSC email address (@ucsc.edu)');
-      setIsLoading(false);
-      return;
+    const result = await forgotPassword(email);
+    
+    if (result.success) {
+      setIsSuccess(true);
+    } else {
+      setError(result.error || 'Something went wrong');
     }
-
-    try {
-      const success = await forgotPassword(email);
-      if (success) {
-        setIsSuccess(true);
-      } else {
-        setError('Email not found or invalid');
-      }
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    
+    setIsLoading(false);
   };
 
   const handleClose = () => {
@@ -68,7 +59,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
           <p className="text-gray-600">
             {isSuccess 
               ? 'We sent you a reset link, check your slugmail!'
-              : 'Enter your UCSC email to reset your password'
+              : 'Enter your registered UCSC email to reset your password'
             }
           </p>
         </div>
@@ -77,7 +68,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
           <div className="text-center space-y-4">
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl">
               <Mail className="mx-auto mb-2" size={24} />
-              <p className="text-sm">Reset link sent to {email}</p>
+              <p className="text-sm">✅ Reset link sent to {email}</p>
             </div>
             <Button onClick={handleClose} className="w-full bg-ucsc-navy">
               Got it!
@@ -100,7 +91,7 @@ const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-sm">
-                {error}
+                ❗ {error}
               </div>
             )}
 

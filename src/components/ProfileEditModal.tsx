@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import { X, Upload, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,8 +40,61 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   if (!isOpen || !user) return null;
+
+  const uploadProfileImage = async (file: File) => {
+    try {
+      setUploadingImage(true);
+      
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pics')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('profile-pics')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Could not upload image. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Immediately show preview
+    const previewUrl = URL.createObjectURL(file);
+    setFormData({ ...formData, profilePic: previewUrl });
+
+    // Upload to storage
+    const uploadedUrl = await uploadProfileImage(file);
+    if (uploadedUrl) {
+      setFormData(prev => ({ ...prev, profilePic: uploadedUrl }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +123,24 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
     }
 
     try {
+      // Update password if provided
+      if (formData.newPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: formData.newPassword
+        });
+        
+        if (passwordError) {
+          toast({
+            title: "Password Update Failed",
+            description: passwordError.message,
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Update profile
       const updates = {
         fullName: formData.fullName,
         username: formData.username,
@@ -101,15 +172,6 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, you'd upload to a service like Supabase Storage
-      const mockUrl = 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face';
-      setFormData({ ...formData, profilePic: mockUrl });
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -130,7 +192,7 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
           <div className="text-center">
             <div className="relative mx-auto w-24 h-24 mb-4">
               <img 
-                src={formData.profilePic} 
+                src={formData.profilePic || 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face'} 
                 alt="Profile"
                 className="w-24 h-24 rounded-full object-cover border-2 border-ucsc-gold"
               />
@@ -143,6 +205,11 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
                   className="hidden"
                 />
               </label>
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                  <div className="text-white text-xs">Uploading...</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -225,18 +292,6 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Password
-                </label>
-                <Input
-                  type="password"
-                  value={formData.currentPassword}
-                  onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   New Password
                 </label>
                 <Input
@@ -272,7 +327,7 @@ const ProfileEditModal = ({ isOpen, onClose }: ProfileEditModalProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || uploadingImage}
               className="flex-1 bg-ucsc-navy"
             >
               {isLoading ? 'Saving...' : 'Save Changes'}
