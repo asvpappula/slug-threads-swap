@@ -1,5 +1,5 @@
-
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ClothingItem {
   id: string;
@@ -15,12 +15,15 @@ export interface ClothingItem {
   userProfilePic: string;
   isSold: boolean;
   createdAt: Date;
+  soldAt?: Date;
 }
 
 interface ClothingContextType {
   items: ClothingItem[];
   addItem: (item: Omit<ClothingItem, 'id' | 'createdAt'>) => void;
   getUserItems: (userId: string) => ClothingItem[];
+  deleteItem: (itemId: string, userId: string) => Promise<boolean>;
+  markAsSold: (itemId: string, userId: string) => Promise<boolean>;
 }
 
 const ClothingContext = createContext<ClothingContextType | undefined>(undefined);
@@ -33,57 +36,8 @@ export const useClothing = () => {
   return context;
 };
 
-// Mock data for initial items
-const mockItems: ClothingItem[] = [
-  {
-    id: '1',
-    title: 'Slug Life Hoodie',
-    description: 'Cozy UCSC hoodie, perfect for those foggy Santa Cruz mornings!',
-    price: 35,
-    category: 'hoodie',
-    size: 'M',
-    condition: 'gently-used',
-    images: ['https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=400&fit=crop'],
-    userId: 'user1',
-    username: 'samantha_sc',
-    userProfilePic: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=50&h=50&fit=crop&crop=face',
-    isSold: false,
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: '2',
-    title: 'Vintage Band Tee',
-    description: 'Super soft vintage band t-shirt, one of a kind!',
-    price: 18,
-    category: 'shirt',
-    size: 'S',
-    condition: 'worn',
-    images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop'],
-    userId: 'user2',
-    username: 'alex_music',
-    userProfilePic: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=50&h=50&fit=crop&crop=face',
-    isSold: false,
-    createdAt: new Date('2024-01-14')
-  },
-  {
-    id: '3',
-    title: 'High-waisted Jeans',
-    description: 'Cute high-waisted jeans, great for campus walks!',
-    price: 28,
-    category: 'pants',
-    size: 'M',
-    condition: 'gently-used',
-    images: ['https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400&h=400&fit=crop'],
-    userId: 'user3',
-    username: 'emma_style',
-    userProfilePic: 'https://images.unsplash.com/photo-1721322800607-8c38375eef04?w=50&h=50&fit=crop&crop=face',
-    isSold: false,
-    createdAt: new Date('2024-01-13')
-  }
-];
-
 export const ClothingProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<ClothingItem[]>(mockItems);
+  const [items, setItems] = useState<ClothingItem[]>([]);
 
   const addItem = (newItem: Omit<ClothingItem, 'id' | 'createdAt'>) => {
     const item: ClothingItem = {
@@ -98,11 +52,84 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
     return items.filter(item => item.userId === userId);
   };
 
+  const deleteItem = async (itemId: string, userId: string) => {
+    try {
+      const item = items.find(i => i.id === itemId);
+      if (!item || item.userId !== userId) {
+        return false;
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error deleting item:', error);
+        return false;
+      }
+
+      // Update local state
+      setItems(prev => prev.filter(i => i.id !== itemId));
+      return true;
+    } catch (error) {
+      console.error('Error in deleteItem:', error);
+      return false;
+    }
+  };
+
+  const markAsSold = async (itemId: string, userId: string) => {
+    try {
+      const item = items.find(i => i.id === itemId);
+      if (!item || item.userId !== userId) {
+        return false;
+      }
+
+      const soldAt = new Date();
+
+      // Update in database
+      const { error } = await supabase
+        .from('items')
+        .update({ 
+          is_sold: true,
+          sold_at: soldAt.toISOString()
+        })
+        .eq('id', itemId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error marking item as sold:', error);
+        return false;
+      }
+
+      // Update local state
+      setItems(prev => prev.map(i => 
+        i.id === itemId 
+          ? { ...i, isSold: true, soldAt } 
+          : i
+      ));
+
+      // Schedule auto-removal after 24 hours
+      setTimeout(() => {
+        deleteItem(itemId, userId);
+      }, 24 * 60 * 60 * 1000); // 24 hours
+
+      return true;
+    } catch (error) {
+      console.error('Error in markAsSold:', error);
+      return false;
+    }
+  };
+
   return (
     <ClothingContext.Provider value={{
       items,
       addItem,
-      getUserItems
+      getUserItems,
+      deleteItem,
+      markAsSold
     }}>
       {children}
     </ClothingContext.Provider>

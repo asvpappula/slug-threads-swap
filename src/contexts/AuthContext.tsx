@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -50,7 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
@@ -62,7 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchUserProfile(session.user);
@@ -113,13 +110,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          return { success: false, error: 'Incorrect email or password.' };
-        }
         if (error.message.includes('Email not confirmed')) {
           return { success: false, error: 'Please check your email and confirm your account.' };
         }
-        return { success: false, error: 'Invalid credentials. Please register first.' };
+        return { success: false, error: 'Invalid credentials. Please try again.' };
       }
 
       return { success: true };
@@ -144,7 +138,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             college: signupData.college,
             student_id: signupData.studentId,
             profile_pic: signupData.profilePic || null
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/confirmed`
         }
       });
 
@@ -181,7 +176,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Update local user state
       setUser(prev => prev ? { ...prev, ...updates } : null);
       return true;
     } catch (error) {
