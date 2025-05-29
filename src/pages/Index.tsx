@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ClothingProvider, ClothingItem } from '@/contexts/ClothingContext';
+import { Toaster } from '@/components/ui/toaster';
 import Layout from '@/components/Layout';
 import HomePage from '@/components/HomePage';
 import SellPage from '@/components/SellPage';
@@ -56,6 +56,7 @@ const Index = () => {
         <Layout currentTab={currentTab} onTabChange={setCurrentTab}>
           {renderCurrentPage()}
         </Layout>
+        <Toaster />
       </ClothingProvider>
     </AuthProvider>
   );

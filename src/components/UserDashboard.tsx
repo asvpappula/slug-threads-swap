@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClothing, ClothingItem } from '@/contexts/ClothingContext';
-import { Edit, Trash2, MessageCircle, Plus, LogOut, Package, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, MessageCircle, Plus, LogOut, Package, CheckCircle, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ProfileEditModal from './ProfileEditModal';
 
 interface UserDashboardProps {
   onNavigateToSell: () => void;
@@ -16,6 +17,7 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
   const { user, logout } = useAuth();
   const { items, getUserItems } = useClothing();
   const [activeTab, setActiveTab] = useState('listings');
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const userItems = getUserItems(user?.id || '');
   
@@ -40,12 +42,10 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
   ];
 
   const handleMarkAsSold = (itemId: string) => {
-    // In real app, this would update the item's isSold status
     console.log('Marking item as sold:', itemId);
   };
 
   const handleDeleteItem = (itemId: string) => {
-    // In real app, this would delete the item
     console.log('Deleting item:', itemId);
   };
 
@@ -59,7 +59,7 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      {/* Welcome Header */}
+      {/* Enhanced Welcome Header with Profile Info */}
       <div className="bg-gradient-to-r from-ucsc-gold to-ucsc-peach rounded-2xl p-6 mb-6 text-ucsc-navy">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -70,18 +70,37 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
             />
             <div>
               <h2 className="text-2xl font-bold mb-1">Hi {user.username}! 👋</h2>
-              <p className="opacity-80">Here's your closet.</p>
+              <p className="opacity-80 text-sm">Here's your closet.</p>
+              <div className="mt-2 space-y-1">
+                {user.college && (
+                  <p className="text-sm font-medium">🎓 {user.college}</p>
+                )}
+                {user.studentId && (
+                  <p className="text-sm">🪪 UCSC ID: #{user.studentId}</p>
+                )}
+              </div>
             </div>
           </div>
-          <Button
-            onClick={logout}
-            variant="outline"
-            size="sm"
-            className="bg-white/20 border-white/30 text-ucsc-navy hover:bg-white/30"
-          >
-            <LogOut size={16} className="mr-2" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowProfileEdit(true)}
+              variant="outline"
+              size="sm"
+              className="bg-white/20 border-white/30 text-ucsc-navy hover:bg-white/30"
+            >
+              <Settings size={16} className="mr-2" />
+              Edit Profile
+            </Button>
+            <Button
+              onClick={logout}
+              variant="outline"
+              size="sm"
+              className="bg-white/20 border-white/30 text-ucsc-navy hover:bg-white/30"
+            >
+              <LogOut size={16} className="mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -226,7 +245,6 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
           )}
         </TabsContent>
 
-        {/* Add New Item Tab */}
         <TabsContent value="add-item">
           <Card>
             <CardHeader>
@@ -245,6 +263,11 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ProfileEditModal 
+        isOpen={showProfileEdit} 
+        onClose={() => setShowProfileEdit(false)} 
+      />
     </div>
   );
 };

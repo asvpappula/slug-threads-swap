@@ -5,7 +5,10 @@ interface User {
   id: string;
   username: string;
   email: string;
+  fullName?: string;
   profilePic?: string;
+  college?: string;
+  studentId?: string;
 }
 
 interface AuthContextType {
@@ -13,7 +16,19 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  signup: (username: string, email: string, password: string) => Promise<boolean>;
+  signup: (signupData: SignupData) => Promise<boolean>;
+  updateProfile: (updates: Partial<User>) => Promise<boolean>;
+  forgotPassword: (email: string) => Promise<boolean>;
+}
+
+interface SignupData {
+  fullName: string;
+  username: string;
+  email: string;
+  password: string;
+  college: string;
+  studentId: string;
+  profilePic?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: '1',
         username: email.split('@')[0],
         email,
+        fullName: 'Test Student',
+        college: 'Porter College',
+        studentId: '1234567',
         profilePic: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face'
       };
       setUser(mockUser);
@@ -44,19 +62,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const signup = async (username: string, email: string, password: string): Promise<boolean> => {
+  const signup = async (signupData: SignupData): Promise<boolean> => {
     // Simulate API call
-    if (email.includes('@ucsc.edu')) {
+    if (signupData.email.includes('@ucsc.edu')) {
       const mockUser = {
         id: Date.now().toString(),
-        username,
-        email,
-        profilePic: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face'
+        username: signupData.username,
+        email: signupData.email,
+        fullName: signupData.fullName,
+        college: signupData.college,
+        studentId: signupData.studentId,
+        profilePic: signupData.profilePic || 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=100&h=100&fit=crop&crop=face'
       };
       setUser(mockUser);
       return true;
     }
     return false;
+  };
+
+  const updateProfile = async (updates: Partial<User>): Promise<boolean> => {
+    // Simulate API call
+    if (user) {
+      setUser({ ...user, ...updates });
+      return true;
+    }
+    return false;
+  };
+
+  const forgotPassword = async (email: string): Promise<boolean> => {
+    // Simulate sending reset email
+    return email.includes('@ucsc.edu');
   };
 
   const logout = () => {
@@ -69,7 +104,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: !!user,
       login,
       logout,
-      signup
+      signup,
+      updateProfile,
+      forgotPassword
     }}>
       {children}
     </AuthContext.Provider>
