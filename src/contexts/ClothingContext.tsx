@@ -45,7 +45,8 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
 
   const loadItems = async () => {
     try {
-      const { data, error } = await supabase
+      // Use any type temporarily until Supabase regenerates types
+      const { data, error } = await (supabase as any)
         .from('items')
         .select(`
           *,
@@ -61,7 +62,7 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const formattedItems: ClothingItem[] = data?.map(item => ({
+      const formattedItems: ClothingItem[] = data?.map((item: any) => ({
         id: item.id,
         title: item.title,
         description: item.description || '',
@@ -92,7 +93,7 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('items')
         .insert({
           title: newItem.title,
@@ -151,7 +152,7 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('items')
         .delete()
         .eq('id', itemId)
@@ -179,7 +180,7 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
 
       const soldAt = new Date();
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('items')
         .update({ 
           is_sold: true,
