@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
 
 export interface ClothingItem {
   id: string;
@@ -24,6 +26,7 @@ interface ClothingContextType {
   getUserItems: (userId: string) => ClothingItem[];
   deleteItem: (itemId: string, userId: string) => Promise<boolean>;
   markAsSold: (itemId: string, userId: string) => Promise<boolean>;
+  loadItems: () => Promise<void>;
 }
 
 const ClothingContext = createContext<ClothingContextType | undefined>(undefined);
@@ -38,14 +41,98 @@ export const useClothing = () => {
 
 export const ClothingProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<ClothingItem[]>([]);
+  const { user } = useAuth();
 
-  const addItem = (newItem: Omit<ClothingItem, 'id' | 'createdAt'>) => {
-    const item: ClothingItem = {
-      ...newItem,
-      id: Date.now().toString(),
-      createdAt: new Date()
-    };
-    setItems(prev => [item, ...prev]);
+  const loadItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select(`
+          *,
+          profiles:user_id (
+            username,
+            profile_pic
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading items:', error);
+        return;
+      }
+
+      const formattedItems: ClothingItem[] = data?.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description || '',
+        price: item.price,
+        category: item.category,
+        size: item.size,
+        condition: item.condition,
+        images: item.images || [],
+        userId: item.user_id,
+        username: item.profiles?.username || 'Unknown User',
+        userProfilePic: item.profiles?.profile_pic || '/placeholder.svg',
+        isSold: item.is_sold || false,
+        createdAt: new Date(item.created_at),
+        soldAt: item.sold_at ? new Date(item.sold_at) : undefined
+      })) || [];
+
+      setItems(formattedItems);
+    } catch (error) {
+      console.error('Error in loadItems:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const addItem = async (newItem: Omit<ClothingItem, 'id' | 'createdAt'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          title: newItem.title,
+          description: newItem.description,
+          price: newItem.price,
+          category: newItem.category,
+          size: newItem.size,
+          condition: newItem.condition,
+          images: newItem.images,
+          user_id: user.id,
+          is_sold: false
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding item:', error);
+        return;
+      }
+
+      const item: ClothingItem = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        price: data.price,
+        category: data.category,
+        size: data.size,
+        condition: data.condition,
+        images: data.images || [],
+        userId: data.user_id,
+        username: user.username,
+        userProfilePic: user.profilePic,
+        isSold: false,
+        createdAt: new Date(data.created_at)
+      };
+
+      setItems(prev => [item, ...prev]);
+    } catch (error) {
+      console.error('Error in addItem:', error);
+    }
   };
 
   const getUserItems = (userId: string) => {
@@ -59,7 +146,11 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Delete from database
+      // Don't allow deletion if item is sold
+      if (item.isSold) {
+        return false;
+      }
+
       const { error } = await supabase
         .from('items')
         .delete()
@@ -71,7 +162,6 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Update local state
       setItems(prev => prev.filter(i => i.id !== itemId));
       return true;
     } catch (error) {
@@ -89,7 +179,6 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
 
       const soldAt = new Date();
 
-      // Update in database
       const { error } = await supabase
         .from('items')
         .update({ 
@@ -104,7 +193,6 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      // Update local state
       setItems(prev => prev.map(i => 
         i.id === itemId 
           ? { ...i, isSold: true, soldAt } 
@@ -114,7 +202,7 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
       // Schedule auto-removal after 24 hours
       setTimeout(() => {
         deleteItem(itemId, userId);
-      }, 24 * 60 * 60 * 1000); // 24 hours
+      }, 24 * 60 * 60 * 1000);
 
       return true;
     } catch (error) {
@@ -129,7 +217,8 @@ export const ClothingProvider = ({ children }: { children: ReactNode }) => {
       addItem,
       getUserItems,
       deleteItem,
-      markAsSold
+      markAsSold,
+      loadItems
     }}>
       {children}
     </ClothingContext.Provider>

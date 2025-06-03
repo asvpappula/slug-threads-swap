@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClothing, ClothingItem } from '@/contexts/ClothingContext';
@@ -170,8 +171,8 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
                             className="w-20 h-20 rounded-xl object-cover"
                           />
                           {item.isSold && (
-                            <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                              <span className="text-white font-bold text-sm">SOLD</span>
+                            <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center">
+                              <span className="text-white font-bold text-sm bg-red-600 px-2 py-1 rounded">SOLD</span>
                             </div>
                           )}
                         </div>
@@ -183,7 +184,7 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
                               <div className="flex items-center gap-2 mt-1">
                                 {item.isSold ? (
                                   <div className="flex flex-col">
-                                    <span className="flex items-center gap-1 text-green-600 text-sm">
+                                    <span className="flex items-center gap-1 text-red-600 text-sm">
                                       <CheckCircle size={14} />
                                       Sold
                                     </span>
@@ -197,29 +198,32 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
-                                <Edit size={14} className="mr-1" />
-                                Edit
-                              </Button>
                               {!item.isSold && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleMarkAsSold(item.id)}
-                                  className="text-green-600 border-green-200 hover:bg-green-50"
-                                >
-                                  <CheckCircle size={14} className="mr-1" />
-                                  Mark Sold
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="outline">
+                                    <Edit size={14} className="mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleMarkAsSold(item.id)}
+                                    className="text-green-600 border-green-200 hover:bg-green-50"
+                                  >
+                                    <CheckCircle size={14} className="mr-1" />
+                                    Mark as Sold
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => setItemToDelete(item.id)}
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                  >
+                                    <Trash2 size={14} className="mr-1" />
+                                    Delete
+                                  </Button>
+                                </>
                               )}
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => setItemToDelete(item.id)}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                              >
-                                <Trash2 size={14} />
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -269,10 +273,9 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
         <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogTitle>Delete Item</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete this item from your listings.
-                This action cannot be undone.
+                Are you sure you want to delete this post? This action cannot be undone and the item will be permanently removed from both the public feed and your dashboard.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -281,6 +284,7 @@ const UserDashboard = ({ onNavigateToSell, onStartChat }: UserDashboardProps) =>
                 onClick={handleDeleteConfirm}
                 className="bg-red-600 hover:bg-red-700"
               >
+                <Trash2 size={14} className="mr-2" />
                 Delete Item
               </AlertDialogAction>
             </AlertDialogFooter>
